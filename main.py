@@ -268,6 +268,60 @@ def convert_media(input_path: str, output_path: str):
         subprocess.run(cmd, check=True)
 
 
+def batch_convert(input_dir, output_dir, input_ext, output_ext):
+    """Batch convert all files with input_ext from input_dir to output_ext in output_dir."""
+    input_path = Path(input_dir).resolve()
+    output_path = Path(output_dir).resolve()
+    
+    # Validate input directory
+    if not input_path.exists():
+        raise FileNotFoundError(f"Input directory {input_path} does not exist.")
+    
+    if not input_path.is_dir():
+        raise ValueError(f"Input path {input_path} is not a directory.")
+    
+    # Ensure extensions start with dot
+    if not input_ext.startswith('.'):
+        input_ext = '.' + input_ext
+    if not output_ext.startswith('.'):
+        output_ext = '.' + output_ext
+    
+    # Create output directory if it doesn't exist
+    output_path.mkdir(parents=True, exist_ok=True)
+    
+    # Find all files with the input extension
+    input_files = list(input_path.glob(f"*{input_ext}"))
+    
+    if not input_files:
+        print(f"No files with extension {input_ext} found in {input_path}")
+        return
+    
+    print(f"Found {len(input_files)} files with extension {input_ext}\nConverting from {input_path} to {output_path}\nConverting {input_ext} → {output_ext}")
+    
+    successful_conversions = 0
+    failed_conversions = 0
+    
+    for input_file in input_files:
+        try:
+            # Create output filename with new extension
+            output_filename = input_file.stem + output_ext
+            output_file = output_path / output_filename
+            
+            print(f"Converting: {input_file.name} → {output_filename}")
+            
+            # Use the existing convert_file function
+            convert_file(str(input_file), str(output_file), preserve_original=True)
+            successful_conversions += 1
+            
+        except Exception as e:
+            print(f"✗ Failed to convert {input_file.name}: {e}")
+            failed_conversions += 1
+            continue
+    
+    print("-" * 50)
+    print(f"Batch conversion completed:\n✓ Successful: {successful_conversions}\n✗ Failed: {failed_conversions}\n📁 Output directory: {output_path}")
+
+
 def convert_file(input_path, output_path, preserve_original=False, password=None):
     start_time = time.time()
     temp_file_path = None
@@ -401,6 +455,15 @@ def setup_parser():
         help="Password for encrypted documents or password-protected archives",
     )
 
+    # Batch convert command
+    batch_parser = subparsers.add_parser(
+        "batch-convert", help="Batch convert files of one format from one directory to another directory of another format"
+    )
+    batch_parser.add_argument("input_dir", help="Input directory path")
+    batch_parser.add_argument("output_dir", help="Output directory path")
+    batch_parser.add_argument("input_ext", help="Input file extension (e.g., .txt or txt)")
+    batch_parser.add_argument("output_ext", help="Output file extension (e.g., .pdf or pdf)")
+
     return parser
 
 
@@ -421,6 +484,13 @@ def main():
                 args.output,
                 preserve_original=getattr(args, "preserve_original", False),
                 password=getattr(args, "password", None),
+            )
+        elif args.command == "batch-convert":
+            batch_convert(
+                args.input_dir,
+                args.output_dir,
+                args.input_ext,
+                args.output_ext,
             )
         else:
             parser.print_help()

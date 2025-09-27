@@ -1,14 +1,10 @@
 import argparse
-import os
-import sys
 import shutil
+import subprocess
+import sys
 import tempfile
 import time
-import threading
-import psutil
-import signal
 from pathlib import Path
-import subprocess
 
 
 def safe_import(module_name, package_name=None):
@@ -24,86 +20,6 @@ def safe_import(module_name, package_name=None):
         else:
             print(f"Try: pip install {module_name}")
         sys.exit(1)
-
-
-class MemoryMonitor:
-    """Monitor memory usage during video processing."""
-
-    def __init__(self, max_memory_gb=4.0):
-        self.max_memory_bytes = max_memory_gb * 1024 * 1024 * 1024
-        self.monitoring = False
-        self.process = psutil.Process()
-
-    def start_monitoring(self):
-        """Start monitoring memory usage."""
-        self.monitoring = True
-
-    def stop_monitoring(self):
-        """Stop monitoring memory usage."""
-        self.monitoring = False
-
-    def check_memory(self):
-        """Check current memory usage and raise exception if limit exceeded."""
-        if not self.monitoring:
-            return
-
-        try:
-            memory_info = self.process.memory_info()
-            current_memory = memory_info.rss  # Resident Set Size
-
-            if current_memory > self.max_memory_bytes:
-                memory_gb = current_memory / (1024 * 1024 * 1024)
-                max_gb = self.max_memory_bytes / (1024 * 1024 * 1024)
-                raise MemoryError(
-                    f"Memory limit exceeded: {memory_gb:.1f}GB > {max_gb:.1f}GB limit. "
-                    "Consider using a smaller input file or increasing memory limit."
-                )
-        except psutil.NoSuchProcess:
-            pass  # Process may have ended
-
-
-class VideoProgressMonitor:
-    """Monitor video conversion progress and provide feedback."""
-
-    def __init__(self, duration, timeout_seconds=300):
-        self.duration = duration
-        self.timeout_seconds = timeout_seconds
-        self.start_time = None
-        self.last_progress = 0
-        self.timed_out = False
-
-    def start(self):
-        """Start progress monitoring."""
-        self.start_time = time.time()
-
-        # Set up timeout handler
-        def timeout_handler():
-            time.sleep(self.timeout_seconds)
-            if (
-                self.start_time
-                and (time.time() - self.start_time) > self.timeout_seconds
-            ):
-                self.timed_out = True
-                print(
-                    f"\n⚠️  Warning: Processing taking longer than {self.timeout_seconds}s"
-                )
-
-        timeout_thread = threading.Thread(target=timeout_handler, daemon=True)
-        timeout_thread.start()
-
-    def update_progress(self, current_time):
-        """Update progress based on current processing time."""
-        if self.duration > 0:
-            progress = min(100, (current_time / self.duration) * 100)
-            if progress - self.last_progress >= 10:  # Update every 10%
-                print(
-                    f"Progress: {progress:.0f}% ({current_time:.1f}s/{self.duration:.1f}s)"
-                )
-                self.last_progress = progress
-
-    def is_timed_out(self):
-        """Check if processing has timed out."""
-        return self.timed_out
 
 
 def detect_file_type(file_path):
@@ -197,87 +113,146 @@ def validate_files(input_path, output_path):
     return str(input_abs), str(output_abs)
 
 
-def convert_video_pure(input_path: str, output_path: str):
+def convert_media(input_path: str, output_path: str):
     ffmpeg_exe = safe_import("imageio_ffmpeg").get_ffmpeg_exe()
-    ext = output_path.rsplit(".", 1)[-1].lower()
-    if ext == "gif":
-        p = output_path.rsplit(".", 1)[0] + ".palette.png"
-        subprocess.run(
-            [
-                ffmpeg_exe,
-                "-y",
-                "-i",
-                input_path,
-                "-vf",
-                "fps=10,scale=320:-1:flags=lanczos,palettegen=stats_mode=diff",
-                p,
-            ],
-            check=True,
-        )
-        subprocess.run(
-            [
-                ffmpeg_exe,
-                "-y",
-                "-i",
-                input_path,
-                "-i",
-                p,
-                "-filter_complex",
-                "[0:v]fps=10,scale=320:-1:flags=lanczos[s];[s][1:v]paletteuse=dither=bayer:bayer_scale=5",
-                "-r",
-                "10",
-                output_path,
-            ],
-            check=True,
-        )
-        Path(p).unlink(missing_ok=True)
+    output_path_obj = Path(output_path)
+    output_ext = output_path_obj.suffix.lower()
+
+    # Ensure output file doesn't exist to avoid overwrite issues
+    output_path_obj.unlink(missing_ok=True)
+
+    # === 1. VIDEO → GIF ===
+    if output_ext == ".gif":
+        palette_path = Path(output_path).with_suffix(".palette.png")
+        try:
+            # Generate optimized color palette
+            subprocess.run(
+                [
+                    ffmpeg_exe,
+                    "-y",
+                    "-i",
+                    input_path,
+                    "-vf",
+                    "fps=10,scale=480:-1:flags=lanczos,palettegen=stats_mode=diff",
+                    str(palette_path),
+                ],
+                check=True,
+            )
+
+            # Create GIF using palette
+            subprocess.run(
+                [
+                    ffmpeg_exe,
+                    "-y",
+                    "-i",
+                    input_path,
+                    "-i",
+                    str(palette_path),
+                    "-filter_complex",
+                    "[0:v]fps=10,scale=480:-1:flags=lanczos[s];[s][1:v]paletteuse=dither=bayer:bayer_scale=5",
+                    "-r",
+                    "10",
+                    output_path,
+                ],
+                check=True,
+            )
+        finally:
+            palette_path.unlink(missing_ok=True)
+
+    # === 2. AUDIO → AUDIO (strip video) ===
+    elif output_ext in (".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"):
+        codec_map = {
+            ".mp3": ("libmp3lame", "192k"),
+            ".m4a": ("aac", "192k"),
+            ".aac": ("aac", "192k"),
+            ".wav": ("pcm_s16le", None),
+            ".ogg": ("libvorbis", "192k"),
+            ".flac": ("flac", None),
+        }
+        codec, bitrate = codec_map.get(output_ext, ("aac", "192k"))
+        cmd = [ffmpeg_exe, "-y", "-i", input_path, "-vn", "-c:a", codec]
+        if bitrate:
+            cmd += ["-b:a", bitrate]
+        cmd.append(output_path)
+        subprocess.run(cmd, check=True)
+
+    # === 3. VIDEO → VIDEO (default catch-all) ===
     else:
-        codec_args = {
-            "mp4": [
-                "-c:v",
-                "libx264",
-                "-crf",
-                "28",
-                "-preset",
-                "ultrafast",
-                "-c:a",
-                "aac",
-                "-b:a",
-                "64k",
-            ],
-            "webm": [
-                "-c:v",
-                "libvpx-vp9",
-                "-crf",
-                "40",
-                "-b:v",
-                "0",
-                "-c:a",
-                "libopus",
-                "-cpu-used",
-                "4",
-            ],
-            "mkv": ["-c", "copy"],
-        }.get(ext, ["-c", "copy"])
-        subprocess.run(
+        # Codec configuration based on output format
+        format_codec_map = {
+            ".webm": {
+                "video_codec": "libvpx-vp9",
+                "video_params": [
+                    "-crf",
+                    "30",
+                    "-b:v",
+                    "0",
+                    "-deadline",
+                    "realtime",
+                    "-cpu-used",
+                    "5",
+                ],
+                "audio_codec": "libopus",
+                "audio_params": ["-b:a", "128k"],
+                "format_params": [],
+            },
+            ".mp4": {
+                "video_codec": "libx264",
+                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "audio_codec": "aac",
+                "audio_params": ["-b:a", "128k"],
+                "format_params": ["-movflags", "+faststart"],
+            },
+            ".mkv": {
+                "video_codec": "libx264",
+                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "audio_codec": "aac",
+                "audio_params": ["-b:a", "128k"],
+                "format_params": [],
+            },
+            ".avi": {
+                "video_codec": "libx264",
+                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "audio_codec": "aac",
+                "audio_params": ["-b:a", "128k"],
+                "format_params": [],
+            },
+            ".mov": {
+                "video_codec": "libx264",
+                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "audio_codec": "aac",
+                "audio_params": ["-b:a", "128k"],
+                "format_params": ["-movflags", "+faststart"],
+            },
+            ".flv": {
+                "video_codec": "libx264",
+                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "audio_codec": "aac",
+                "audio_params": ["-b:a", "128k"],
+                "format_params": [],
+            },
+        }
+
+        # Get codec config, default to MP4 settings for unknown formats
+        config = format_codec_map.get(output_ext, format_codec_map[".mp4"])
+
+        cmd = [ffmpeg_exe, "-y", "-i", input_path, "-c:v", config["video_codec"]]
+        cmd.extend(config["video_params"])
+        cmd.extend(config["format_params"])
+        cmd.extend(
             [
-                ffmpeg_exe,
-                "-y",
-                "-i",
-                input_path,
-                *codec_args,
                 "-vf",
-                "scale=640:trunc(640*ih/iw/2)*2",
-                "-r",
-                "24",
-                output_path,
-            ],
-            check=True,
+                "scale=trunc(iw/2)*2:trunc(ih/2)*2",  # ensure even dimensions
+                "-c:a",
+                config["audio_codec"],
+            ]
         )
+        cmd.extend(config["audio_params"])
+        cmd.append(output_path)
+        subprocess.run(cmd, check=True)
 
 
 def convert_file(input_path, output_path, preserve_original=False, password=None):
-    """Convert files between formats with proper error handling."""
     start_time = time.time()
     temp_file_path = None
 
@@ -342,12 +317,10 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
                 img.save(output_abs, optimize=True)
             print(f"Image conversion successful: {output_abs}")
         elif input_type == "audio":
-            AudioSegment = safe_import("AudioSegment", "pydub")
-            audio = AudioSegment.from_file(work_path)
-            audio.export(output_abs, format=output_ext[1:])
+            convert_media(work_path, output_abs)
             print(f"Audio conversion successful: {output_abs}")
         elif input_type == "video":
-            convert_video_pure(work_path, output_abs)
+            convert_media(work_path, output_abs)
             print(f"Video conversion successful: {output_abs}")
         elif input_type == "archive":
             # Archive extraction/compression using Patool

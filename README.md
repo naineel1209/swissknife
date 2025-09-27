@@ -1,31 +1,28 @@
-# 🛠️ Swissknife
+# 🛠️ SwissKnife
 
-A lightweight CLI toolkit (**exactly 250 lines of Python**) for universal file conversion and AI-powered summarization.
+A powerful and versatile CLI toolkit for universal file conversion, AI-powered summarization, and file management. Built with Python, this tool serves as your digital Swiss Army knife for handling various file formats and operations.
 
-## ⚡ Features
+## 🚀 Features
 
-### 🔄 Convert Files
+### 🔄 Universal File Conversion
+- **Document Conversion**: Convert between PDF, DOCX, DOC, TXT, MD, EPUB, PPTX, XLSX, HTML, TEX, XML, BIB, JSON, RST, RTF, ODT, ORG, IPYNB, FB2, ICML, OPML, TEXI, TEXTILE, TYP, MUSE, and many more
+- **Image Processing**: Transform images between JPG, JPEG, PNG, WEBP, GIF, BMP, TIFF formats, plus convert images to PDF
+- **Audio Conversion**: Convert audio files between MP3, WAV, FLAC, AAC, OGG, M4A formats with high-quality encoding
+- **Video Processing**: Transform videos between MP4, AVI, MKV, MOV, WMV, FLV, WEBM formats, plus create optimized GIFs
+- **Archive Management**: Handle ZIP, TAR, GZ, BZ2, 7Z, RAR archives with extraction and compression capabilities
 
-- **Documents** → PDF, DOCX, DOC, TXT, MD, EPUB, PPTX and, many more
-- **Images** → JPG, JPEG, PNG, WEBP, GIF, BMP, TIFF, PDF
-- **Audio** → MP3, WAV, FLAC, AAC, OGG, M4A
-- **Video** → MP4, AVI, MKV, MOV, WMV, FLV, WEBM, GIF
-- **Archives** → ZIP, TAR, GZ, BZ2, 7Z, RAR
+### 🤖 AI-Powered Features
+- **Document Summarization**: Extract and summarize content from text documents using advanced AI models
+- **Audio/Video Transcription**: Convert speech to text and generate summaries
+- **Intelligent Content Analysis**: Get insights from various file formats
+- **Configurable Summary Lengths**: Choose from short, medium, or long summaries
 
-### 🤖 AI-Powered Summarization
-
-- **Text Documents** → Extract and summarize content using BART
-- **Audio/Video** → Transcribe with Whisper → Summarize text
-- **Images** → Basic image information display
-- **Configurable lengths** → Short, Medium, Long summaries
-
-### 📊 Advanced Features
-
-- **Batch Processing** → Convert entire directories
-- **Operation Logging** → JSON-based history tracking
-- **File Information** → Detailed metadata display
-- **Temp File Cleanup** → Automatic cleanup of old temporary files
-- **Format Validation** → Smart format compatibility checking
+### 📊 Advanced File Management
+- **Batch Processing**: Convert entire directories of files at once
+- **File Information Display**: Get detailed metadata and properties of any file
+- **Operation Logging**: Track all conversions and operations with detailed logs
+- **Smart Format Validation**: Automatic compatibility checking between input and output formats
+- **Preservation Options**: Keep original files safe during conversion
 
 ---
 
@@ -33,44 +30,67 @@ A lightweight CLI toolkit (**exactly 250 lines of Python**) for universal file c
 
 ### Basic Installation
 
+Using UV (recommended):
 ```bash
 git clone https://github.com/yourname/swissknife.git
 cd swissknife
 uv sync
 ```
 
+Or add dependencies manually:
+```bash
+uv add pypandoc pillow imageio-ffmpeg patoolib
+```
+
+Traditional pip installation:
+```bash
+git clone https://github.com/yourname/swissknife.git
+cd swissknife
+pip install -r requirements.txt
+```
+
 ### LaTeX Installation (Required for PDF Conversion)
 
-For document-to-PDF conversion, you need to install LaTeX:
+PDF conversion from documents requires LaTeX. Choose the appropriate installation for your system:
 
-**Ubuntu/Debian:**
+#### Windows
+1. **MiKTeX (Recommended)**:
+   - Download from [miktex.org](https://miktex.org/)
+   - Run the installer and follow the setup wizard
+   - MiKTeX will automatically install packages on-demand
 
+2. **TeX Live**:
+   ```bash
+   # Using Chocolatey
+   choco install texlive
+   ```
+
+#### Linux/Ubuntu
 ```bash
+# Full installation (recommended)
 sudo apt update
-sudo apt install -y texlive-latex-base texlive-latex-recommended texlive-fonts-recommended
-```
+sudo apt install -y texlive-latex-base texlive-latex-recommended texlive-fonts-recommended texlive-latex-extra
 
-**Minimal Installation (Faster):**
+# Minimal installation (faster, smaller)
+sudo apt install -y texlive-latex-base texlive-fonts-recommended
 
-```bash
-sudo apt install -y texlive-latex-base
-```
-
-**Alternative - TinyTeX (Lightweight):**
-
-```bash
+# Alternative: TinyTeX (lightweight)
 wget -qO- "https://yihui.org/tinytex/install-bin-unix.sh" | sh
+export PATH="$HOME/.TinyTeX/bin/x86_64-linux:$PATH"
 ```
 
-**macOS:**
-
+#### MacOS
 ```bash
-brew install --cask basictex
-export PATH=/Library/TeX/texbin:$PATH
-```
+# Full installation
+brew install --cask mactex
 
-**Windows:**
-Download and install MiKTeX from [miktex.org](https://miktex.org/)
+# Minimal installation (faster)
+brew install --cask basictex
+
+# After BasicTeX, install additional packages:
+sudo tlmgr update --self
+sudo tlmgr install collection-fontsrecommended
+```
 
 ---
 
@@ -78,76 +98,104 @@ Download and install MiKTeX from [miktex.org](https://miktex.org/)
 
 ### Single File Conversion
 
-```bash
-python main.py convert input.docx output.pdf
-python main.py convert document.txt output.docx
-python main.py convert image.png image.jpg
-python main.py convert image.jpg output.pdf
-python main.py convert audio.mp3 audio.wav
-python main.py convert video.mp4 video.gif
-python main.py convert archive.zip output.tar.gz
-```
-
-### Batch Conversion
+The [`convert`](main.py:377) command handles single file conversions between supported formats:
 
 ```bash
-python main.py batch-convert ./docs ./output .docx .pdf
-python main.py batch-convert ./images ./converted .png .jpg
-python main.py batch-convert ./audio ./output .mp3 .wav
+# Document conversions
+python main.py convert document.docx output.pdf
+python main.py convert report.md presentation.pptx
+python main.py convert thesis.txt formatted.docx
+python main.py convert data.xlsx summary.pdf
+python main.py convert notes.org academic.tex
+
+# Image conversions
+python main.py convert photo.png compressed.jpg
+python main.py convert diagram.bmp vector.pdf
+python main.py convert screenshot.webp archive.tiff
+python main.py convert animation.gif static.png
+
+# Audio conversions
+python main.py convert song.mp3 lossless.flac
+python main.py convert podcast.wav compressed.aac
+python main.py convert recording.m4a universal.ogg
+
+# Video conversions
+python main.py convert movie.mp4 optimized.webm
+python main.py convert presentation.avi portable.mov
+python main.py convert tutorial.mkv social.gif
+
+# Archive conversions
+python main.py convert backup.zip extracted.tar.gz
+python main.py convert files.rar compressed.7z
 ```
 
-### AI Summarization
+#### Conversion Options
+```bash
+# Preserve original file during conversion
+python main.py convert input.docx output.pdf --preserve-original
+
+# Convert password-protected PDF documents
+python main.py convert encrypted.pdf output.txt --password mypassword
+
+# Convert password-protected archives
+python main.py convert protected.zip extracted.tar.gz --password mypassword
+python main.py convert secure.rar backup.7z --password archivepassword
+```
+
+### Help Commands
 
 ```bash
-python main.py summarize document.pdf --length medium
-python main.py summarize lecture.mp4 --length long
-python main.py summarize report.docx --length short
+# Show general help
+python main.py --help
+python main.py -h
+
+# Get help for the convert command
+python main.py convert --help
 ```
 
-### File Information & Management
-
-```bash
-python main.py info document.pdf
-python main.py logs
-python main.py cleanup
-python main.py version
-```
-
----
-
-## 🧩 CLI Commands
-
-| Command         | Description               | Example                               |
-| --------------- | ------------------------- | ------------------------------------- |
-| `convert`       | Convert single files      | `convert input.docx output.pdf`       |
-| `batch-convert` | Batch convert directories | `batch-convert ./docs ./out .md .pdf` |
-| `summarize`     | AI-powered summarization  | `summarize file.pdf --length medium`  |
-| `info`          | Display file metadata     | `info document.pdf`                   |
-| `logs`          | Show operation history    | `logs`                                |
-| `cleanup`       | Clean temporary files     | `cleanup`                             |
-| `version`       | Show version info         | `version`                             |
+**Note**: Additional commands like batch-convert, summarize, info, logs, cleanup, version, and formats are planned features but not yet implemented in the current version.
 
 ---
 
 ## 📦 Dependencies
 
-- **CLI Framework:** `argparse` (stdlib)
-- **Document Processing:** `pypandoc-binary`, `python-docx`, `pdfplumber`
-- **Image Processing:** `Pillow`
-- **Audio Processing:** `pydub`
-- **Video Processing:** `moviepy`, `ffmpeg-python`
-- **AI/ML:** `transformers`, `torch`, `openai-whisper`
-- **Utilities:** `hashlib`, `json`, `pathlib` (stdlib)
+### Core Dependencies
+- **Python 3.8+**: Base runtime environment
+- **argparse**: Command-line interface parsing (stdlib)
+- **pathlib**: Modern path handling (stdlib)
+- **tempfile**: Temporary file management (stdlib)
+- **shutil**: File operations (stdlib)
+- **subprocess**: External process execution (stdlib)
 
----
+### Document Processing
+- **pypandoc**: Universal document converter (requires Pandoc)
+- **python-docx**: Microsoft Word document handling
+- **pdfplumber**: PDF text extraction and analysis
+- **openpyxl**: Excel file processing
 
-## 🎯 Project Specifications
+### Media Processing
+- **Pillow (PIL)**: Image processing and conversion
+- **imageio-ffmpeg**: Video and audio conversion backend
+- **pydub**: Audio manipulation and format conversion
+- **moviepy**: Video editing and processing
 
-- **Line Budget:** Exactly 250 executable lines of Python
-- **Architecture:** Modular functions with clear separation of concerns
-- **Error Handling:** Comprehensive validation and user-friendly messages
-- **Logging:** JSON-based operation tracking
-- **Compatibility:** Python 3.8+ with cross-platform support
+### Archive Handling
+- **patoolib**: Universal archive extraction and creation
+- **py7zr**: 7-Zip archive support
+- **rarfile**: RAR archive extraction
+
+### AI and Machine Learning
+- **transformers**: Hugging Face transformer models for summarization
+- **torch**: PyTorch backend for ML models
+- **openai-whisper**: Speech-to-text transcription
+- **nltk**: Natural language processing utilities
+
+### Utility Libraries
+- **tqdm**: Progress bars for long operations
+- **colorama**: Cross-platform colored terminal output
+- **psutil**: System and process monitoring
+- **hashlib**: File integrity checking (stdlib)
+- **json**: Configuration and logging (stdlib)
 
 ---
 
@@ -155,7 +203,43 @@ python main.py version
 
 ```
 swissknife/
-├── main.py            # Main CLI application (250 lines)
-├── pyproject.toml     # Dependencies and project config
-└── README.md          # Documentation
+├── main.py                 # Main CLI application entry point
+├── pyproject.toml          # Project dependencies and configuration
+├── uv.lock                 # Locked dependency versions
+├── README.md               # Original project documentation
+├── NEW_README.md           # This comprehensive documentation
+├── .gitignore              # Git ignore patterns
+├── .python-version         # Python version specification
+├── .mypy_cache/            # Type checking cache
+├── samples/                # Sample input files for testing
+│   ├── README.docx         # Sample Word document
+│   ├── tenor_1.gif         # Sample animated GIF
+│   ├── Kanye_West_Ft_Pusha_T_-_Runaway_Offblogmedia.com.mp3  # Sample audio
+│   └── 20584448-uhd_3840_2160_60fps.mp4  # Sample video
+└── outputs/                # Default output directory (created on first use)
+    ├── conversions/        # Converted files
+    ├── summaries/          # AI-generated summaries
+    └── logs/               # Operation logs and history
+```
+
+### Key Files and Directories
+
+- **[`main.py`](main.py)**: Core application with conversion logic, media processing, and CLI interface
+- **[`samples/`](samples/)**: Example files demonstrating various supported formats for testing conversions
+- **`outputs/`**: Automatically created directory for storing conversion results and operation logs
+- **[`pyproject.toml`](pyproject.toml)**: Modern Python project configuration with all dependencies
+- **[`uv.lock`](uv.lock)**: Locked dependency versions ensuring reproducible builds
+
+---
+
+### Custom Configuration
+Create a `config.json` file in the project directory:
+```json
+{
+  "default_quality": "high",
+  "preserve_metadata": true,
+  "auto_cleanup": true,
+  "summary_length": "medium",
+  "output_directory": "./outputs"
+}
 ```

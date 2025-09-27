@@ -134,8 +134,12 @@ python main.py convert files.rar compressed.7z
 # Preserve original file during conversion
 python main.py convert input.docx output.pdf --preserve-original
 
-# Convert password-protected files
+# Convert password-protected PDF documents
 python main.py convert encrypted.pdf output.txt --password mypassword
+
+# Convert password-protected archives
+python main.py convert protected.zip extracted.tar.gz --password mypassword
+python main.py convert secure.rar backup.7z --password archivepassword
 ```
 
 ### Help Commands

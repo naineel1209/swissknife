@@ -114,6 +114,13 @@ def validate_files(input_path, output_path):
 
 
 def convert_media(input_path: str, output_path: str):
+    # Video/GIF conversion constants
+    GIF_FPS = 10
+    GIF_WIDTH = 480
+    GIF_DITHER_SCALE = 5
+    GIF_SCALE_FLAGS = "lanczos"
+    AUDIO_BITRATE = "192k"
+    
     ffmpeg_exe = safe_import("imageio_ffmpeg").get_ffmpeg_exe()
     output_path_obj = Path(output_path)
     output_ext = output_path_obj.suffix.lower()
@@ -126,6 +133,7 @@ def convert_media(input_path: str, output_path: str):
         palette_path = Path(output_path).with_suffix(".palette.png")
         try:
             # Generate optimized color palette
+            palette_filter = f"fps={GIF_FPS},scale={GIF_WIDTH}:-1:flags={GIF_SCALE_FLAGS},palettegen=stats_mode=diff"
             subprocess.run(
                 [
                     ffmpeg_exe,
@@ -133,13 +141,14 @@ def convert_media(input_path: str, output_path: str):
                     "-i",
                     input_path,
                     "-vf",
-                    "fps=10,scale=480:-1:flags=lanczos,palettegen=stats_mode=diff",
+                    palette_filter,
                     str(palette_path),
                 ],
                 check=True,
             )
 
             # Create GIF using palette
+            gif_filter = f"[0:v]fps={GIF_FPS},scale={GIF_WIDTH}:-1:flags={GIF_SCALE_FLAGS}[s];[s][1:v]paletteuse=dither=bayer:bayer_scale={GIF_DITHER_SCALE}"
             subprocess.run(
                 [
                     ffmpeg_exe,
@@ -149,9 +158,9 @@ def convert_media(input_path: str, output_path: str):
                     "-i",
                     str(palette_path),
                     "-filter_complex",
-                    "[0:v]fps=10,scale=480:-1:flags=lanczos[s];[s][1:v]paletteuse=dither=bayer:bayer_scale=5",
+                    gif_filter,
                     "-r",
-                    "10",
+                    str(GIF_FPS),
                     output_path,
                 ],
                 check=True,
@@ -162,14 +171,14 @@ def convert_media(input_path: str, output_path: str):
     # === 2. AUDIO → AUDIO (strip video) ===
     elif output_ext in (".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"):
         codec_map = {
-            ".mp3": ("libmp3lame", "192k"),
-            ".m4a": ("aac", "192k"),
-            ".aac": ("aac", "192k"),
+            ".mp3": ("libmp3lame", AUDIO_BITRATE),
+            ".m4a": ("aac", AUDIO_BITRATE),
+            ".aac": ("aac", AUDIO_BITRATE),
             ".wav": ("pcm_s16le", None),
-            ".ogg": ("libvorbis", "192k"),
+            ".ogg": ("libvorbis", AUDIO_BITRATE),
             ".flac": ("flac", None),
         }
-        codec, bitrate = codec_map.get(output_ext, ("aac", "192k"))
+        codec, bitrate = codec_map.get(output_ext, ("aac", AUDIO_BITRATE))
         cmd = [ffmpeg_exe, "-y", "-i", input_path, "-vn", "-c:a", codec]
         if bitrate:
             cmd += ["-b:a", bitrate]
@@ -178,57 +187,64 @@ def convert_media(input_path: str, output_path: str):
 
     # === 3. VIDEO → VIDEO (default catch-all) ===
     else:
+        # Video encoding constants
+        VIDEO_BITRATE_AUDIO = "128k"
+        CRF_QUALITY = "23"
+        WEBM_CRF = "30"
+        X264_PRESET = "ultrafast"
+        VP9_CPU_USED = "5"
+        
         # Codec configuration based on output format
         format_codec_map = {
             ".webm": {
                 "video_codec": "libvpx-vp9",
                 "video_params": [
                     "-crf",
-                    "30",
+                    WEBM_CRF,
                     "-b:v",
                     "0",
                     "-deadline",
                     "realtime",
                     "-cpu-used",
-                    "5",
+                    VP9_CPU_USED,
                 ],
                 "audio_codec": "libopus",
-                "audio_params": ["-b:a", "128k"],
+                "audio_params": ["-b:a", VIDEO_BITRATE_AUDIO],
                 "format_params": [],
             },
             ".mp4": {
                 "video_codec": "libx264",
-                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "video_params": ["-crf", CRF_QUALITY, "-preset", X264_PRESET],
                 "audio_codec": "aac",
-                "audio_params": ["-b:a", "128k"],
+                "audio_params": ["-b:a", VIDEO_BITRATE_AUDIO],
                 "format_params": ["-movflags", "+faststart"],
             },
             ".mkv": {
                 "video_codec": "libx264",
-                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "video_params": ["-crf", CRF_QUALITY, "-preset", X264_PRESET],
                 "audio_codec": "aac",
-                "audio_params": ["-b:a", "128k"],
+                "audio_params": ["-b:a", VIDEO_BITRATE_AUDIO],
                 "format_params": [],
             },
             ".avi": {
                 "video_codec": "libx264",
-                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "video_params": ["-crf", CRF_QUALITY, "-preset", X264_PRESET],
                 "audio_codec": "aac",
-                "audio_params": ["-b:a", "128k"],
+                "audio_params": ["-b:a", VIDEO_BITRATE_AUDIO],
                 "format_params": [],
             },
             ".mov": {
                 "video_codec": "libx264",
-                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "video_params": ["-crf", CRF_QUALITY, "-preset", X264_PRESET],
                 "audio_codec": "aac",
-                "audio_params": ["-b:a", "128k"],
+                "audio_params": ["-b:a", VIDEO_BITRATE_AUDIO],
                 "format_params": ["-movflags", "+faststart"],
             },
             ".flv": {
                 "video_codec": "libx264",
-                "video_params": ["-crf", "23", "-preset", "ultrafast"],
+                "video_params": ["-crf", CRF_QUALITY, "-preset", X264_PRESET],
                 "audio_codec": "aac",
-                "audio_params": ["-b:a", "128k"],
+                "audio_params": ["-b:a", VIDEO_BITRATE_AUDIO],
                 "format_params": [],
             },
         }
@@ -289,7 +305,7 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
                     content,
                     to=output_ext.lstrip("."),
                     outputfile=output_abs,
-                    format="plain",
+                    format="markdown",
                     extra_args=["--pdf-engine=xelatex"] if output_ext == ".pdf" else [],
                 )
             else:
@@ -327,8 +343,13 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
             patoolib = safe_import("patoolib")
             temp_extract_dir = tempfile.mkdtemp()
             try:
-                # Extract the input archive
-                patoolib.extract_archive(work_path, outdir=temp_extract_dir)
+                # Extract the input archive with password support
+                if password:
+                    # For password-protected archives, use verbosity=1 to handle passwords
+                    patoolib.extract_archive(work_path, outdir=temp_extract_dir, verbosity=1, interactive=False)
+                    print(f"Extracting password-protected archive: {work_path}")
+                else:
+                    patoolib.extract_archive(work_path, outdir=temp_extract_dir)
 
                 # Create the output archive directly from the extracted directory
                 patoolib.create_archive(output_abs, [temp_extract_dir])
@@ -377,7 +398,7 @@ def setup_parser():
     )
     convert_parser.add_argument(
         "--password",
-        help="Password for encrypted files (if applicable)",
+        help="Password for encrypted documents or password-protected archives",
     )
 
     return parser

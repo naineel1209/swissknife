@@ -32,7 +32,7 @@ A lightweight CLI toolkit (**exactly 250 lines of Python**) for universal file c
 ```bash
 git clone https://github.com/yourname/swissknife.git
 cd swissknife
-pip install -e .
+uv sync
 ```
 
 ### LaTeX Installation (Required for PDF Conversion)

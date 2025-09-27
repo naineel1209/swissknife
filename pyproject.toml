@@ -1,7 +1,7 @@
 [project]
 name = "swissknife"
 version = "0.1.0"
-description = "Add your description here"
+description = "A Swiss Army Knife for file conversions, manipulations and, Summarizations."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
@@ -11,5 +11,5 @@ dependencies = [
     "pillow>=11.3.0",
     "pydub>=0.25.1",
     "pypandoc-binary>=1.15",
-    "imageio-ffmpeg>=0.6.0",
+    "imageio-ffmpeg>=0.6.0"
 ]

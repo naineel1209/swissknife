@@ -12,10 +12,11 @@ A powerful and versatile CLI toolkit for universal file conversion, AI-powered s
 - **Archive Management**: Handle ZIP, TAR, GZ, BZ2, 7Z, RAR archives with extraction and compression capabilities
 
 ### 🤖 AI-Powered Features
-- **Document Summarization**: Extract and summarize content from text documents using advanced AI models
+- **Document Summarization**: Extract and summarize content from text documents using Google's Gemini AI models
 - **Audio/Video Transcription**: Convert speech to text and generate summaries
 - **Intelligent Content Analysis**: Get insights from various file formats
 - **Configurable Summary Lengths**: Choose from short, medium, or long summaries
+- **Customizable System Prompt**: Modify the AI behavior by editing the `summarize_prompt.txt` file
 
 ### 📊 Advanced File Management
 - **Batch Processing**: Convert entire directories of files at once
@@ -48,6 +49,19 @@ git clone https://github.com/yourname/swissknife.git
 cd swissknife
 pip install -r requirements.txt
 ```
+
+### Gemini Setup (Required for AI Summarization Features)
+
+1. Sign up on AI Studio: [aistudio.google.com](https://aistudio.google.com/)
+2. Create a new project and obtain your API key
+3. Set the API key as an environment variable:
+   ```bash
+   export GOOGLE_API_KEY="your_api_key_here"
+   ```
+4. Install the Gemini SDK:
+   ```bash
+   pip install google-genai
+   ```
 
 ### LaTeX Installation (Required for PDF Conversion)
 
@@ -142,6 +156,38 @@ python main.py convert protected.zip extracted.tar.gz --password mypassword
 python main.py convert secure.rar backup.7z --password archivepassword
 ```
 
+### Document Summarization
+
+The [`summarize`](solution.py:194) command generates AI-powered summaries of text documents:
+
+```bash
+# Generate a summary with default (medium) length
+python main.py summarize document.pdf
+
+# Generate summaries with different lengths
+python main.py summarize report.docx --length short
+python main.py summarize thesis.txt --length medium
+python main.py summarize book.pdf --length long
+```
+
+The summary will be displayed in the terminal and saved as `{original_filename}_summary.txt` in the same directory as the input file.
+
+### Custom System Prompt
+
+The AI behavior can be customized by modifying the [`summarize_prompt.txt`](summarize_prompt.txt:1) file. This file contains the system prompt template with the following placeholders:
+
+- `{{FILE_DETAILS}}`: JSON representation of the uploaded file metadata
+- `{{SUMMARY_REQUIREMENTS}}`: Description of the desired summary length and format
+
+Example `summarize_prompt.txt` content:
+```
+You are an AI assistant specialized in generating concise, accurate summaries...
+File Details:
+{{FILE_DETAILS}}
+Summary Requirements:
+- {{SUMMARY_REQUIREMENTS}}
+```
+
 ### Help Commands
 
 ```bash
@@ -149,11 +195,13 @@ python main.py convert secure.rar backup.7z --password archivepassword
 python main.py --help
 python main.py -h
 
-# Get help for the convert command
+# Get help for specific commands
 python main.py convert --help
+python main.py summarize --help
+python main.py batch-convert --help
 ```
 
-**Note**: Additional commands like batch-convert, summarize, info, logs, cleanup, version, and formats are planned features but not yet implemented in the current version.
+**Note**: Additional commands like info, logs, cleanup, version, and formats are planned features but not yet implemented in the current version.
 
 ---
 

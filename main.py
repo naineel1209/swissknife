@@ -5,6 +5,8 @@ import sys
 import tempfile
 import time
 from pathlib import Path
+import json
+import os
 
 
 def safe_import(module_name, package_name=None):
@@ -120,7 +122,7 @@ def convert_media(input_path: str, output_path: str):
     GIF_DITHER_SCALE = 5
     GIF_SCALE_FLAGS = "lanczos"
     AUDIO_BITRATE = "192k"
-    
+
     ffmpeg_exe = safe_import("imageio_ffmpeg").get_ffmpeg_exe()
     output_path_obj = Path(output_path)
     output_ext = output_path_obj.suffix.lower()
@@ -193,7 +195,7 @@ def convert_media(input_path: str, output_path: str):
         WEBM_CRF = "30"
         X264_PRESET = "ultrafast"
         VP9_CPU_USED = "5"
-        
+
         # Codec configuration based on output format
         format_codec_map = {
             ".webm": {
@@ -272,52 +274,52 @@ def batch_convert(input_dir, output_dir, input_ext, output_ext):
     """Batch convert all files with input_ext from input_dir to output_ext in output_dir."""
     input_path = Path(input_dir).resolve()
     output_path = Path(output_dir).resolve()
-    
+
     # Validate input directory
     if not input_path.exists():
         raise FileNotFoundError(f"Input directory {input_path} does not exist.")
-    
+
     if not input_path.is_dir():
         raise ValueError(f"Input path {input_path} is not a directory.")
-    
+
     # Ensure extensions start with dot
     if not input_ext.startswith('.'):
         input_ext = '.' + input_ext
     if not output_ext.startswith('.'):
         output_ext = '.' + output_ext
-    
+
     # Create output directory if it doesn't exist
     output_path.mkdir(parents=True, exist_ok=True)
-    
+
     # Find all files with the input extension
     input_files = list(input_path.glob(f"*{input_ext}"))
-    
+
     if not input_files:
         print(f"No files with extension {input_ext} found in {input_path}")
         return
-    
+
     print(f"Found {len(input_files)} files with extension {input_ext}\nConverting from {input_path} to {output_path}\nConverting {input_ext} → {output_ext}")
-    
+
     successful_conversions = 0
     failed_conversions = 0
-    
+
     for input_file in input_files:
         try:
             # Create output filename with new extension
             output_filename = input_file.stem + output_ext
             output_file = output_path / output_filename
-            
+
             print(f"Converting: {input_file.name} → {output_filename}")
-            
+
             # Use the existing convert_file function
             convert_file(str(input_file), str(output_file), preserve_original=True)
             successful_conversions += 1
-            
+
         except Exception as e:
             print(f"✗ Failed to convert {input_file.name}: {e}")
             failed_conversions += 1
             continue
-    
+
     print("-" * 50)
     print(f"Batch conversion completed:\n✓ Successful: {successful_conversions}\n✗ Failed: {failed_conversions}\n📁 Output directory: {output_path}")
 
@@ -424,6 +426,146 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
             shutil.rmtree(Path(temp_file_path).parent, ignore_errors=True)
 
 
+def summarize(input_path, length="medium"):
+    """Generate AI-powered summaries of various file types with improved error handling."""
+    input_abs = Path(input_path).resolve()
+
+    # Validate inputs
+    if not input_abs.exists() or not input_abs.is_file():
+        raise FileNotFoundError(
+            f"Input file {input_abs} does not exist or is not a file."
+        )
+
+    if "GOOGLE_API_KEY" not in os.environ:
+        raise EnvironmentError("GOOGLE_API_KEY environment variable is not set.")
+
+    # Validate file size (Google API has limits)
+    file_size = input_abs.stat().st_size
+    max_size = 100 * 1024 * 1024  # 100MB limit
+    if file_size > max_size:
+        raise ValueError(
+            f"File size ({file_size / 1024 / 1024:.1f}MB) exceeds maximum limit of {max_size / 1024 / 1024}MB"
+        )
+
+    genai = safe_import("google.genai", "google-generativeai")
+
+    client = genai.Client()
+    doc = None
+
+    try:
+        print(f"Processing file: {input_abs.name} ({file_size / 1024:.1f}KB)")
+
+        # Upload document to GenAI
+        doc = client.files.upload(file=input_abs)
+        print(f"Upload successful. File ID: {doc.name}")
+
+        # Enhanced summary length configurations
+        summary_configs = {
+            "short": {
+                "description": "a brief summary in 2-3 sentences focusing on the main topic",
+                "max_tokens": 1000,
+                "temperature": 0.5,
+            },
+            "medium": {
+                "description": "a concise summary in 1-2 paragraphs covering key points and main themes",
+                "max_tokens": 2000,
+                "temperature": 0.7,
+            },
+            "long": {
+                "description": "a detailed summary in 3-4 paragraphs with comprehensive coverage of content, themes, and important details",
+                "max_tokens": 4000,
+                "temperature": 0.8,
+            },
+        }
+
+        config = summary_configs.get(length, summary_configs["medium"])
+
+        # Load and prepare prompt template
+        prompt_template_path = Path("./summarize_prompt.txt")
+        if not prompt_template_path.exists():
+            raise FileNotFoundError("summarize_prompt.txt template file not found")
+
+        with open(prompt_template_path, "r", encoding="utf-8") as f:
+            prompt_template = f.read()
+
+        prompt = prompt_template.replace(
+            "{{SUMMARY_REQUIREMENTS}}", config["description"]
+        )
+        prompt = prompt.replace(
+            "{{FILE_DETAILS}}", json.dumps(doc.to_json_dict(), indent=2)
+        )
+
+        print("Generating summary...")
+
+        # Wait for file processing with better feedback
+        start_time = time.time()
+        timeout = 300  # 5 minutes
+
+        while True:
+            file_info = client.files.get(name=doc.name)
+            if file_info.state == "ACTIVE":
+                print("File processing complete")
+                break
+            elif file_info.state == "FAILED":
+                raise RuntimeError(f"File processing failed: {file_info}")
+            elif file_info.state == "PROCESSING":
+                elapsed = time.time() - start_time
+                print(f"Processing... ({elapsed:.1f}s elapsed)")
+                if elapsed > timeout:
+                    raise TimeoutError(
+                        f"File processing timed out after {timeout} seconds"
+                    )
+                time.sleep(2)
+            else:
+                print(f"Unexpected file state: {file_info.state}")
+                time.sleep(1)
+
+        # Generate content with improved configuration
+        response = client.models.generate_content(
+            model="gemini-2.0-flash",
+            contents=[prompt, doc],
+            config=genai.types.GenerateContentConfig(
+                temperature=config["temperature"],
+                top_p=0.9,
+                max_output_tokens=config["max_tokens"],
+            ),
+        )
+
+        # Extract and validate summary content
+        summary_content = response._get_text()
+        if not summary_content or summary_content.strip() == "":
+            raise ValueError("Generated summary is empty")
+
+        if len(summary_content.strip()) < 10:
+            raise ValueError("Generated summary is too short, may indicate an error")
+
+        print(f"Summary generated successfully ({len(summary_content)} characters)")
+        print("Summary:\n" + "=" * 50)
+        print(summary_content)
+        print("=" * 50)
+
+        # Save summary to file
+        summary_file = input_abs.with_name(input_abs.stem + "_summary.txt")
+        with open(summary_file, "w", encoding="utf-8") as sf:
+            sf.write(summary_content)
+
+        print(f"\nSummary saved to {summary_file}")
+        return summary_content
+
+    except Exception as e:
+        error_msg = f"Error during summarization: {type(e).__name__}: {e}"
+        print(error_msg)
+        raise RuntimeError(error_msg) from e
+    finally:
+        # Clean up uploaded file
+        if doc:
+            try:
+                client.files.delete(name=doc.name)
+                print(f"Cleaned up uploaded file: {doc.name}")
+            except Exception as cleanup_error:
+                print(f"Warning: Failed to clean up uploaded file: {cleanup_error}")
+
+
 def setup_parser():
     parser = argparse.ArgumentParser(
         prog="swissknife",
@@ -464,6 +606,18 @@ def setup_parser():
     batch_parser.add_argument("input_ext", help="Input file extension (e.g., .txt or txt)")
     batch_parser.add_argument("output_ext", help="Output file extension (e.g., .pdf or pdf)")
 
+    # Summarization command
+    summarize_parser = subparsers.add_parser(
+        "summarize", help="Summarize text documents"
+    )
+    summarize_parser.add_argument("input", help="Input document path")
+    summarize_parser.add_argument(
+        "--length",
+        choices=["short", "medium", "long"],
+        default="medium",
+        help="Summary length",
+    )
+
     return parser
 
 
@@ -492,6 +646,8 @@ def main():
                 args.input_ext,
                 args.output_ext,
             )
+        elif args.command == "summarize":
+            summarize(args.input, length=args.length)
         else:
             parser.print_help()
     except KeyboardInterrupt:

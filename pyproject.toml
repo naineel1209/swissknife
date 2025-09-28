@@ -11,5 +11,6 @@ dependencies = [
     "pillow>=11.3.0",
     "pydub>=0.25.1",
     "pypandoc-binary>=1.15",
-    "imageio-ffmpeg>=0.6.0"
+    "imageio-ffmpeg>=0.6.0",
+    "google-genai>=1.39.1",
 ]

@@ -40,14 +40,7 @@ uv sync
 
 Or add dependencies manually:
 ```bash
-uv add pypandoc pillow imageio-ffmpeg patoolib
-```
-
-Traditional pip installation:
-```bash
-git clone https://github.com/yourname/swissknife.git
-cd swissknife
-pip install -r requirements.txt
+uv add pypandoc pillow imageio-ffmpeg patoolib google-genai
 ```
 
 ### Gemini Setup (Required for AI Summarization Features)
@@ -60,7 +53,7 @@ pip install -r requirements.txt
    ```
 4. Install the Gemini SDK:
    ```bash
-   pip install google-genai
+   uv add google-genai
    ```
 
 ### LaTeX Installation (Required for PDF Conversion)
@@ -279,15 +272,3 @@ swissknife/
 - **[`uv.lock`](uv.lock)**: Locked dependency versions ensuring reproducible builds
 
 ---
-
-### Custom Configuration
-Create a `config.json` file in the project directory:
-```json
-{
-  "default_quality": "high",
-  "preserve_metadata": true,
-  "auto_cleanup": true,
-  "summary_length": "medium",
-  "output_directory": "./outputs"
-}
-```

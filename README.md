@@ -41,6 +41,7 @@ cd swissknife
 pip install uv --upgrade
 uv sync
 ```
+And active the .venv created.
 
 Or add dependencies manually:
 ```bash

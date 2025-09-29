@@ -26,6 +26,8 @@ A powerful and versatile CLI toolkit for universal file conversion, AI-powered s
 - **PDF Merge**: Combine multiple PDF files into a single consolidated document
 - **PDF Split**: Extract specific pages or page ranges from PDF documents into separate files
 
+**Note**: Some features require external dependencies like LaTeX for PDF conversions and command-line tools for certain archive formats. Please refer to the installation instructions below. Moreover, AI features require a valid Google API key and internet connectivity. Some other conversions like PDF to any other format are not supported due to limitations.
+
 ---
 
 ## 🔧 Installation

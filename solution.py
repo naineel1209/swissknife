@@ -140,7 +140,7 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
                 patoolib.extract_archive(work_path, outdir=temp_extract_dir, password=password if password else None, interactive=False)
                 if password:
                     print(f"Info: Extracting password-protected archive: {work_path}")
-                patoolib.create_archive(output_abs, [temp_extract_dir], password=password if password else None)
+                patoolib.create_archive(output_abs, [temp_extract_dir], password=password if password and output_ext not in (".tar", ".tar.gz", "tar.bz2", "tar.xz", ".gz", ".bz2", ".xz") else None)
                 print(f"Success: Archive conversion successful: {output_abs}")
             finally:
                 shutil.rmtree(temp_extract_dir, ignore_errors=True)

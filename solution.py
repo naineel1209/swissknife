@@ -170,7 +170,7 @@ def summarize(input_path, length="medium"):
     try:
         doc = client.files.upload(file=input_abs)
         print("Info: Processing document and generating summary...")
-        configs = {"short": {"description": "a brief summary in 2-3 sentences", "max_tokens": 1000, "temperature": 0.5}, "medium": {"description": "a concise summary in 1-2 paragraphs", "max_tokens": 2000, "temperature": 0.7}, "long": {"description": "a detailed summary in 3-4 paragraphs", "max_tokens": 4000, "temperature": 0.8}}
+        configs = {"short": {"description": "a brief summary about the essence of the document in 1 paragraph", "max_tokens": 1500, "temperature": 0.5}, "medium": {"description": "a concise summary about the essence of the document in 2-3 paragraphs", "max_tokens": 2500, "temperature": 0.7}, "long": {"description": "a detailed summary about the essence of the document in 3-4 paragraphs", "max_tokens": 4000, "temperature": 0.8}}
         config = configs.get(length, configs["medium"])
         with open("./summarize_prompt.txt", "r", encoding="utf-8") as f: prompt = f.read().replace("{{SUMMARY_REQUIREMENTS}}", config["description"]).replace("{{FILE_DETAILS}}", json.dumps(doc.to_json_dict(), indent=2))
         start_time = time.time()

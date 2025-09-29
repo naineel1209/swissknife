@@ -1,5 +1,7 @@
 # 🛠️ SwissKnife
 
+![SwisKnife Banner](./samples/banner.png)
+
 A powerful and versatile CLI toolkit for universal file conversion, AI-powered summarization, and file management. Built with Python, this tool serves as your digital Swiss Army knife for handling various file formats and operations.
 
 ## 🚀 Features
@@ -13,17 +15,16 @@ A powerful and versatile CLI toolkit for universal file conversion, AI-powered s
 
 ### 🤖 AI-Powered Features
 - **Document Summarization**: Extract and summarize content from text documents using Google's Gemini AI models
-- **Audio/Video Transcription**: Convert speech to text and generate summaries
 - **Intelligent Content Analysis**: Get insights from various file formats
 - **Configurable Summary Lengths**: Choose from short, medium, or long summaries
 - **Customizable System Prompt**: Modify the AI behavior by editing the `summarize_prompt.txt` file
 
 ### 📊 Advanced File Management
 - **Batch Processing**: Convert entire directories of files at once
-- **File Information Display**: Get detailed metadata and properties of any file
 - **Operation Logging**: Track all conversions and operations with detailed logs
 - **Smart Format Validation**: Automatic compatibility checking between input and output formats
-- **Preservation Options**: Keep original files safe during conversion
+- **PDF Merge**: Combine multiple PDF files into a single consolidated document
+- **PDF Split**: Extract specific pages or page ranges from PDF documents into separate files
 
 ---
 
@@ -50,10 +51,6 @@ uv add pypandoc pillow imageio-ffmpeg patoolib google-genai
 3. Set the API key as an environment variable:
    ```bash
    export GOOGLE_API_KEY="your_api_key_here"
-   ```
-4. Install the Gemini SDK:
-   ```bash
-   uv add google-genai
    ```
 
 ### LaTeX Installation (Required for PDF Conversion)
@@ -99,68 +96,137 @@ sudo tlmgr update --self
 sudo tlmgr install collection-fontsrecommended
 ```
 
+### Archive Unpacking Dependencies
+
+Some archive formats, such as `.7z` and `.rar`, require external command-line tools for extraction. Follow the instructions below to install these tools on your operating system.
+
 ---
+
+#### 1. 7-Zip (`.7z` format)
+
+To unpack `.7z` archives, install the `7z` command-line utility:
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install p7zip-full
+```
+
+**macOS:**
+```bash
+brew install p7zip
+```
+
+**Windows:**
+1. Download and run the installer from the [official 7-Zip website](https://www.7-zip.org/).
+2. Add the installation directory (usually `C:\Program Files\7-Zip`) to your system's `PATH` environment variable:
+   - Search for "Edit the system environment variables" in the Start Menu.
+   - Click "Environment Variables...", find the `Path` variable, and add the directory.
+
+---
+
+#### 2. RAR (`.rar` format)
+
+To pack and unpack `.rar` archives, install the `rar` and `unrar` command-line utility.
+
+**Linux (Ubuntu/Debian):**
+```bash
+sudo apt update
+sudo apt install unrar rar
+```
+
+**macOS:**
+```bash
+brew install unrar rar
+```
+
+**Windows:**
+1. Download and run the installer from the [official RARLAB website](https://www.rarlab.com/rar_add.htm).
+
+**For Extraction Only (`UnRAR.exe`):**
+1. Download the [UnRAR command line version](https://www.rarlab.com/rar_add.htm) for Windows.
+2. Extract `UnRAR.exe` to a folder (e.g., `C:\Tools\UnRAR`).
+3. Add this folder to your system's `PATH` environment variable.
+
+**For Creation & Extraction (`Rar.exe` and `UnRAR.exe`):**
+1. Download the [RAR command line version](https://www.rarlab.com/rar_add.htm) for Windows (e.g., "WinRAR and RAR 64-bit command line version").
+2. Extract the contents (including `Rar.exe` and `UnRAR.exe`) to a folder (e.g., `C:\Tools\RAR`).
+3. Add this folder to your system's `PATH` environment variable.
+
 
 ## 🚀 Usage
 
+### Help Commands
+
+```bash
+# Show general help
+python solution.py --help
+python solution.py -h
+
+# Get help for specific commands
+python solution.py convert --help
+python solution.py summarize --help
+python solution.py batch-convert --help
+python solution.py merge --help
+python solution.py split --help
+```
+
 ### Single File Conversion
 
-The [`convert`](main.py:377) command handles single file conversions between supported formats:
+The `convert` command handles single file conversions between supported formats:
 
 ```bash
 # Document conversions
-python main.py convert document.docx output.pdf
-python main.py convert report.md presentation.pptx
-python main.py convert thesis.txt formatted.docx
-python main.py convert data.xlsx summary.pdf
-python main.py convert notes.org academic.tex
+python solution.py convert document.docx output.pdf
+python solution.py convert report.md presentation.pptx
+python solution.py convert thesis.txt formatted.docx
+python solution.py convert data.xlsx summary.pdf
+python solution.py convert notes.org academic.tex
 
 # Image conversions
-python main.py convert photo.png compressed.jpg
-python main.py convert diagram.bmp vector.pdf
-python main.py convert screenshot.webp archive.tiff
-python main.py convert animation.gif static.png
+python solution.py convert photo.png compressed.jpg
+python solution.py convert diagram.bmp vector.pdf
+python solution.py convert screenshot.webp archive.tiff
+python solution.py convert animation.gif static.png
 
 # Audio conversions
-python main.py convert song.mp3 lossless.flac
-python main.py convert podcast.wav compressed.aac
-python main.py convert recording.m4a universal.ogg
+python solution.py convert song.mp3 lossless.flac
+python solution.py convert podcast.wav compressed.aac
+python solution.py convert recording.m4a universal.ogg
 
 # Video conversions
-python main.py convert movie.mp4 optimized.webm
-python main.py convert presentation.avi portable.mov
-python main.py convert tutorial.mkv social.gif
+python solution.py convert movie.mp4 optimized.webm
+python solution.py convert presentation.avi portable.mov
+python solution.py convert tutorial.mkv social.gif
 
 # Archive conversions
-python main.py convert backup.zip extracted.tar.gz
-python main.py convert files.rar compressed.7z
+python solution.py convert backup.zip extracted.tar.gz
+python solution.py convert files.rar compressed.7z
 ```
+
 
 #### Conversion Options
 ```bash
 # Preserve original file during conversion
-python main.py convert input.docx output.pdf --preserve-original
-
-# Convert password-protected PDF documents
-python main.py convert encrypted.pdf output.txt --password mypassword
+python solution.py convert input.docx output.pdf --preserve-original
 
 # Convert password-protected archives
-python main.py convert protected.zip extracted.tar.gz --password mypassword
-python main.py convert secure.rar backup.7z --password archivepassword
+python solution.py convert protected.zip extracted.tar.gz --password mypassword
+python solution.py convert secure.rar backup.7z --password archivepassword
 ```
 
 ### Document Summarization
 
-The [`summarize`](solution.py:194) command generates AI-powered summaries of text documents:
+The `summarize` command generates AI-powered summaries of text documents:
 
 ```bash
 # Generate a summary with default (medium) length
-python main.py summarize document.pdf
+python solution.py summarize document.pdf
 
 # Generate summaries with different lengths
-python main.py summarize report.docx --length short
-python main.py summarize thesis.txt --length medium
-python main.py summarize book.pdf --length long
+python solution.py summarize report.docx --length short
+python solution.py summarize thesis.txt --length medium
+python solution.py summarize book.pdf --length long
 ```
 
 The summary will be displayed in the terminal and saved as `{original_filename}_summary.txt` in the same directory as the input file.
@@ -181,20 +247,44 @@ Summary Requirements:
 - {{SUMMARY_REQUIREMENTS}}
 ```
 
-### Help Commands
+---
+
+### 📄 PDF Merge
+
+The [`merge`](solution.py:230) command combines multiple PDF files into a single consolidated document:
 
 ```bash
-# Show general help
-python main.py --help
-python main.py -h
+# Merge multiple PDF files into one
+python solution.py merge file1.pdf file2.pdf file3.pdf
 
-# Get help for specific commands
-python main.py convert --help
-python main.py summarize --help
-python main.py batch-convert --help
+# Merge documents with different names
+python solution.py merge report.pdf appendix.pdf references.pdf
 ```
 
-**Note**: Additional commands like info, logs, cleanup, version, and formats are planned features but not yet implemented in the current version.
+The merged PDF will be saved as `merged_{input_names}.pdf` in the current directory, where `{input_names}` is a concatenation of the input file stems separated by underscores.
+
+### ✂️ PDF Split
+
+The [`split`](solution.py:240) command extracts specific pages or page ranges from a PDF document into separate files:
+
+```bash
+# Extract pages 1-3, page 5, and pages 7-9 into separate files
+python solution.py split document.pdf "1-3,5,7-9"
+
+# Extract only the first 5 pages
+python solution.py split book.pdf "1-5"
+
+# Extract specific individual pages
+python solution.py split manual.pdf "1,3,5,10"
+```
+
+The split command creates separate PDF files named `{original_filename}_part{number}.pdf` for each specified page range. Page numbers are 1-based and inclusive.
+
+#### Split Page Range Syntax
+- **Single page**: `5` (extracts page 5)
+- **Page range**: `1-3` (extracts pages 1, 2, and 3)
+- **Multiple ranges**: `1-3,5,7-9` (extracts pages 1-3, page 5, and pages 7-9)
+- **Mixed**: Combine individual pages and ranges as needed
 
 ---
 
@@ -205,7 +295,6 @@ python main.py batch-convert --help
 - **argparse**: Command-line interface parsing (stdlib)
 - **pathlib**: Modern path handling (stdlib)
 - **tempfile**: Temporary file management (stdlib)
-- **shutil**: File operations (stdlib)
 - **subprocess**: External process execution (stdlib)
 
 ### Document Processing
@@ -222,21 +311,9 @@ python main.py batch-convert --help
 
 ### Archive Handling
 - **patoolib**: Universal archive extraction and creation
-- **py7zr**: 7-Zip archive support
-- **rarfile**: RAR archive extraction
 
 ### AI and Machine Learning
-- **transformers**: Hugging Face transformer models for summarization
-- **torch**: PyTorch backend for ML models
-- **openai-whisper**: Speech-to-text transcription
-- **nltk**: Natural language processing utilities
-
-### Utility Libraries
-- **tqdm**: Progress bars for long operations
-- **colorama**: Cross-platform colored terminal output
-- **psutil**: System and process monitoring
-- **hashlib**: File integrity checking (stdlib)
-- **json**: Configuration and logging (stdlib)
+- **google-genai**: Google Gemini AI integration for text summarization and analysis
 
 ---
 
@@ -244,7 +321,7 @@ python main.py batch-convert --help
 
 ```
 swissknife/
-├── main.py                 # Main CLI application entry point
+├── solution.py             # Main CLI application entry point
 ├── pyproject.toml          # Project dependencies and configuration
 ├── uv.lock                 # Locked dependency versions
 ├── README.md               # Original project documentation
@@ -258,17 +335,6 @@ swissknife/
 │   ├── Kanye_West_Ft_Pusha_T_-_Runaway_Offblogmedia.com.mp3  # Sample audio
 │   └── 20584448-uhd_3840_2160_60fps.mp4  # Sample video
 └── outputs/                # Default output directory (created on first use)
-    ├── conversions/        # Converted files
-    ├── summaries/          # AI-generated summaries
-    └── logs/               # Operation logs and history
 ```
-
-### Key Files and Directories
-
-- **[`main.py`](main.py)**: Core application with conversion logic, media processing, and CLI interface
-- **[`samples/`](samples/)**: Example files demonstrating various supported formats for testing conversions
-- **`outputs/`**: Automatically created directory for storing conversion results and operation logs
-- **[`pyproject.toml`](pyproject.toml)**: Modern Python project configuration with all dependencies
-- **[`uv.lock`](uv.lock)**: Locked dependency versions ensuring reproducible builds
 
 ---

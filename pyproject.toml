@@ -13,4 +13,6 @@ dependencies = [
     "pypandoc-binary>=1.15",
     "imageio-ffmpeg>=0.6.0",
     "google-genai>=1.39.1",
+    "pypdf>=6.1.1",
+    "py7zr>=1.0.0",
 ]

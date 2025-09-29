@@ -12,19 +12,27 @@ from pathlib import Path
 def safe_import(module_name, package_name=None):
     try:
         if package_name:
-            return __import__(module_name, fromlist=[package_name])
-        return __import__(module_name)
+            imported_module = __import__(module_name, fromlist=[package_name])
+            return imported_module
+        imported_module = __import__(module_name)
+        return imported_module
     except ImportError:
-        print(f"Module {module_name} not found. Please install it using pip.")
+        print(f"Error: Module {module_name} not found. Please install it using pip.")
         if package_name:
-            print(f"Try: pip install {package_name}")
+            print(f"Error: Try: pip install {package_name}")
         else:
-            print(f"Try: pip install {module_name}")
+            print(f"Error: Try: pip install {module_name}")
+        print(f"Error: This module is required for the requested operation.")
         sys.exit(1)
 
 
 def detect_file_type(file_path):
-    ext = Path(file_path).suffix.lower()
+    if not file_path:
+        return "unknown"
+    file_path_obj = Path(file_path)
+    if not file_path_obj.exists():
+        return "unknown"
+    ext = file_path_obj.suffix.lower()
     if ext in [".pdf", ".docx", ".doc", ".txt", ".md", ".epub", ".pptx", ".xlsx"]:
         return "document"
     elif ext in [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff"]:
@@ -40,94 +48,51 @@ def detect_file_type(file_path):
 
 
 def is_conversion_supported(input_type, output_ext):
-    if input_type == "unknown" or not output_ext:
-        return False
-    supported_conversions = {
-        "document": [".pdf", ".docx", ".doc", ".txt", ".md", ".epub", ".pptx", ".html", ".tex", ".xml", ".bib", ".json", ".rst", ".rtf", ".odt", ".org", ".ipynb", ".fb2", ".icml", ".opml", ".texi", ".textile", ".typ", ".muse", ".hs", ".1", ".adoc", ".dj", ".ms"],
-        "image": [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".pdf"],
-        "audio": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"],
-        "video": [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".gif"],
-        "archive": [".zip", ".tar", ".gz", ".bz2", ".7z", ".rar"],
-    }
+    if input_type == "unknown" or not output_ext: return False
+    supported_conversions = {"document": [".pdf", ".docx", ".doc", ".txt", ".md", ".epub", ".pptx", ".html", ".tex", ".xml", ".bib", ".json", ".rst", ".rtf", ".odt", ".org", ".ipynb", ".fb2", ".icml", ".opml", ".texi", ".textile", ".typ", ".muse", ".hs", ".1", ".adoc", ".dj", ".ms"], "image": [".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp", ".tiff", ".pdf"], "audio": [".mp3", ".wav", ".flac", ".aac", ".ogg", ".m4a"], "video": [".mp4", ".avi", ".mkv", ".mov", ".wmv", ".flv", ".webm", ".gif"], "archive": [".zip", ".tar", ".gz", ".bz2", ".7z", ".rar"]}
     return output_ext in supported_conversions.get(input_type, [])
 
 
 def create_temp_copy(file_path):
-    temp_dir = tempfile.mkdtemp()
-    temp_file = Path(temp_dir) / Path(file_path).name
-    shutil.copy2(file_path, temp_file)
-    return str(temp_file)
+    temp_dir = tempfile.mkdtemp(); temp_file = Path(temp_dir) / Path(file_path).name; shutil.copy2(file_path, temp_file); return str(temp_file)
 
 
 def validate_files(input_path, output_path):
-    input_abs = Path(input_path).resolve()
-    output_abs = Path(output_path).resolve()
-    if not input_abs.exists():
-        raise FileNotFoundError(f"Input file {input_abs} does not exist.")
+    input_abs, output_abs = Path(input_path).resolve(), Path(output_path).resolve()
+    if not input_abs.exists(): raise FileNotFoundError(f"Input file {input_abs} does not exist.")
     if output_abs.exists():
         response = input(f"Output file {output_abs} exists. Overwrite? (y/N): ")
-        if response.lower() != "y":
-            sys.exit("Operation cancelled.")
-    output_abs.parent.mkdir(parents=True, exist_ok=True)
-    return str(input_abs), str(output_abs)
+        if response.lower() != "y": sys.exit("Operation cancelled.")
+    output_abs.parent.mkdir(parents=True, exist_ok=True); Path(output_abs).unlink(missing_ok=True); return str(input_abs), str(output_abs)
 
 
 def convert_media(input_path: str, output_path: str):
-    ffmpeg_exe = safe_import("imageio_ffmpeg").get_ffmpeg_exe()
-    output_ext = Path(output_path).suffix.lower()
-    Path(output_path).unlink(missing_ok=True)
+    ffmpeg_exe, output_ext = safe_import("imageio_ffmpeg").get_ffmpeg_exe(), Path(output_path).suffix.lower(); Path(output_path).unlink(missing_ok=True)
     if output_ext == ".gif":
         palette_path = Path(output_path).with_suffix(".palette.png")
-        try:
-            subprocess.run([ffmpeg_exe, "-y", "-i", input_path, "-vf", "fps=10,scale=480:-1:flags=lanczos,palettegen=stats_mode=diff", str(palette_path)], check=True)
-            subprocess.run([ffmpeg_exe, "-y", "-i", input_path, "-i", str(palette_path), "-filter_complex", "[0:v]fps=10,scale=480:-1:flags=lanczos[s];[s][1:v]paletteuse=dither=bayer:bayer_scale=5", "-r", "10", output_path], check=True)
-        finally:
-            palette_path.unlink(missing_ok=True)
+        try: subprocess.run([ffmpeg_exe, "-y", "-i", input_path, "-vf", "fps=10,scale=480:-1:flags=lanczos,palettegen=stats_mode=diff", str(palette_path)], check=True); subprocess.run([ffmpeg_exe, "-y", "-i", input_path, "-i", str(palette_path), "-filter_complex", "[0:v]fps=10,scale=480:-1:flags=lanczos[s];[s][1:v]paletteuse=dither=bayer:bayer_scale=5", "-r", "10", output_path], check=True)
+        finally: palette_path.unlink(missing_ok=True)
     elif output_ext in (".mp3", ".wav", ".ogg", ".flac", ".m4a", ".aac"):
-        codec_map = {".mp3": ("libmp3lame", "192k"), ".m4a": ("aac", "192k"), ".aac": ("aac", "192k"), ".wav": ("pcm_s16le", None), ".ogg": ("libvorbis", "192k"), ".flac": ("flac", None)}
-        codec, bitrate = codec_map.get(output_ext, ("aac", "192k"))
-        cmd = [ffmpeg_exe, "-y", "-i", input_path, "-vn", "-c:a", codec]
+        codec_map = {".mp3": ("libmp3lame", "192k"), ".m4a": ("aac", "192k"), ".aac": ("aac", "192k"), ".wav": ("pcm_s16le", None), ".ogg": ("libvorbis", "192k"), ".flac": ("flac", None)}; codec, bitrate = codec_map.get(output_ext, ("aac", "192k")); cmd = [ffmpeg_exe, "-y", "-i", input_path, "-vn", "-c:a", codec]
         if bitrate: cmd += ["-b:a", bitrate]
         cmd.append(output_path); subprocess.run(cmd, check=True)
     else:
-        format_codec_map = {".webm": {"video_codec": "libvpx-vp9", "video_params": ["-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "5"], "audio_codec": "libopus", "audio_params": ["-b:a", "128k"], "format_params": []}, ".mp4": {"video_codec": "libx264", "video_params": ["-crf", "23", "-preset", "ultrafast"], "audio_codec": "aac", "audio_params": ["-b:a", "128k"], "format_params": ["-movflags", "+faststart"]}, ".mkv": {"video_codec": "libx264", "video_params": ["-crf", "23", "-preset", "ultrafast"], "audio_codec": "aac", "audio_params": ["-b:a", "128k"], "format_params": []}, ".avi": {"video_codec": "libx264", "video_params": ["-crf", "23", "-preset", "ultrafast"], "audio_codec": "aac", "audio_params": ["-b:a", "128k"], "format_params": []}, ".mov": {"video_codec": "libx264", "video_params": ["-crf", "23", "-preset", "ultrafast"], "audio_codec": "aac", "audio_params": ["-b:a", "128k"], "format_params": ["-movflags", "+faststart"]}, ".flv": {"video_codec": "libx264", "video_params": ["-crf", "23", "-preset", "ultrafast"], "audio_codec": "aac", "audio_params": ["-b:a", "128k"], "format_params": []}}
-        config = format_codec_map.get(output_ext, format_codec_map[".mp4"])
-        cmd = [ffmpeg_exe, "-y", "-i", input_path, "-c:v", config["video_codec"]]
-        cmd.extend(config["video_params"]); cmd.extend(config["format_params"]); cmd.extend(["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-c:a", config["audio_codec"]]); cmd.extend(config["audio_params"]); cmd.append(output_path); subprocess.run(cmd, check=True)
+        fmt_map = {".webm": ("libvpx-vp9", ["-crf", "30", "-b:v", "0", "-deadline", "realtime", "-cpu-used", "5"], "libopus", ["-b:a", "128k"], []), ".mp4": ("libx264", ["-crf", "23", "-preset", "ultrafast"], "aac", ["-b:a", "128k"], ["-movflags", "+faststart"]), ".mkv": ("libx264", ["-crf", "23", "-preset", "ultrafast"], "aac", ["-b:a", "128k"], []), ".avi": ("libx264", ["-crf", "23", "-preset", "ultrafast"], "aac", ["-b:a", "128k"], []), ".mov": ("libx264", ["-crf", "23", "-preset", "ultrafast"], "aac", ["-b:a", "128k"], ["-movflags", "+faststart"]), ".flv": ("libx264", ["-crf", "23", "-preset", "ultrafast"], "aac", ["-b:a", "128k"], [])}; vcodec, vparams, acodec, aparams, fparams = fmt_map.get(output_ext, fmt_map[".mp4"]); cmd = [ffmpeg_exe, "-y", "-i", input_path, "-c:v", vcodec] + vparams + fparams + ["-vf", "scale=trunc(iw/2)*2:trunc(ih/2)*2", "-c:a", acodec] + aparams + [output_path]; subprocess.run(cmd, check=True)
 
 
 def batch_convert(input_dir, output_dir, input_ext, output_ext):
-    input_path = Path(input_dir).resolve()
-    output_path = Path(output_dir).resolve()
-    if not input_path.exists():
-        raise FileNotFoundError(f"Input directory {input_path} does not exist.")
-    if not input_path.is_dir():
-        raise ValueError(f"Input path {input_path} is not a directory.")
-    if not input_ext.startswith('.'):
-        input_ext = '.' + input_ext
-    if not output_ext.startswith('.'):
-        output_ext = '.' + output_ext
-    output_path.mkdir(parents=True, exist_ok=True)
-    input_files = list(input_path.glob(f"*{input_ext}"))
-    if not input_files:
-        print(f"No files with extension {input_ext} found in {input_path}")
-        return
-    print(f"Found {len(input_files)} files with extension {input_ext}\nConverting from {input_path} to {output_path}\nConverting {input_ext} → {output_ext}")
-    successful_conversions = 0
-    failed_conversions = 0
+    input_path, output_path = Path(input_dir).resolve(), Path(output_dir).resolve()
+    if not input_path.exists(): raise FileNotFoundError(f"Input directory {input_path} does not exist.")
+    if not input_path.is_dir(): raise ValueError(f"Input path {input_path} is not a directory.")
+    if not input_ext.startswith('.'): input_ext = '.' + input_ext
+    if not output_ext.startswith('.'): output_ext = '.' + output_ext
+    output_path.mkdir(parents=True, exist_ok=True); input_files = list(input_path.glob(f"*{input_ext}"))
+    if not input_files: print(f"Info: No files with extension {input_ext} found in {input_path}"); return
+    print(f"Info: Found {len(input_files)} files with extension {input_ext}"); print(f"Info: Converting from {input_path} to {output_path}, {input_ext} → {output_ext}"); successful_conversions, failed_conversions = 0, 0
     for input_file in input_files:
-        try:
-            output_filename = input_file.stem + output_ext
-            output_file = output_path / output_filename
-            print(f"Converting: {input_file.name} → {output_filename}")
-            convert_file(str(input_file), str(output_file), preserve_original=True)
-            successful_conversions += 1
-        except Exception as e:
-            print(f"✗ Failed to convert {input_file.name}: {e}")
-            failed_conversions += 1
-            continue
-    print("-" * 50)
-    print(f"Batch conversion completed:\n✓ Successful: {successful_conversions}\n✗ Failed: {failed_conversions}\n📁 Output directory: {output_path}")
+        try: output_filename = input_file.stem + output_ext; output_file = output_path / output_filename; print(f"Converting: {input_file.name} → {output_filename}"); convert_file(str(input_file), str(output_file), preserve_original=True); successful_conversions += 1
+        except Exception as e: print(f"Error: Failed to convert {input_file.name}: {e}"); failed_conversions += 1; continue
+    print("-" * 50); print(f"Info: Batch conversion completed - Successful: {successful_conversions}"); print(f"Info: Failed: {failed_conversions}"); print(f"Info: Output directory: {output_path}")
 
 
 def convert_file(input_path, output_path, preserve_original=False, password=None):
@@ -141,7 +106,7 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
             raise ValueError(f"Unsupported input file type: {input_abs}")
         if not is_conversion_supported(input_type, output_ext):
             raise ValueError(f"Cannot convert {input_type} to {output_ext}")
-        print(f"Converting {input_abs} to {output_abs}")
+        print(f"Converting: {input_abs} to {output_abs}")
         work_path = input_abs
         if preserve_original: temp_file_path = create_temp_copy(input_abs); work_path = temp_file_path
         if input_type == "document":
@@ -149,7 +114,7 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
             input_ext = Path(work_path).suffix.lower()
             if input_ext == ".txt": content = open(work_path, "r", encoding="utf-8").read(); pypandoc.convert_text(content, to=output_ext.lstrip("."), outputfile=output_abs, format="markdown", extra_args=["--pdf-engine=xelatex"] if output_ext == ".pdf" else [])
             else: pypandoc.convert_file(work_path, to=output_ext.lstrip("."), outputfile=output_abs, format=Path(work_path).suffix.lstrip("."), extra_args=["--pdf-engine=xelatex"] if output_ext == ".pdf" else [])
-            print(f"Document conversion successful: {output_abs}")
+            print(f"Success: Document conversion successful: {output_abs}")
         elif input_type == "image":
             PIL = safe_import("PIL", "PIL")
             from PIL import Image
@@ -163,66 +128,69 @@ def convert_file(input_path, output_path, preserve_original=False, password=None
                 img.save(output_abs, optimize=True, quality=85)
             else:
                 img.save(output_abs, optimize=True)
-            print(f"Image conversion successful: {output_abs}")
+            print(f"Success: Image conversion successful: {output_abs}")
         elif input_type in ("audio", "video"):
             convert_media(work_path, output_abs)
-            print(f"{input_type.capitalize()} conversion successful: {output_abs}")
+            print(f"Success: {input_type.capitalize()} conversion successful: {output_abs}")
         elif input_type == "archive":
             patoolib = safe_import("patoolib")
             temp_extract_dir = tempfile.mkdtemp()
+            print("Password:", password)
             try:
-                patoolib.extract_archive(work_path, outdir=temp_extract_dir, verbosity=1 if password else 0, interactive=False)
+                patoolib.extract_archive(work_path, outdir=temp_extract_dir, password=password if password else None, interactive=False)
                 if password:
-                    print(f"Extracting password-protected archive: {work_path}")
-                patoolib.create_archive(output_abs, [temp_extract_dir])
-                print(f"Archive conversion successful: {output_abs}")
+                    print(f"Info: Extracting password-protected archive: {work_path}")
+                patoolib.create_archive(output_abs, [temp_extract_dir], password=password if password else None)
+                print(f"Success: Archive conversion successful: {output_abs}")
             finally:
                 shutil.rmtree(temp_extract_dir, ignore_errors=True)
         else:
             raise ValueError(f"Unsupported file type: {input_type}")
     except Exception as e:
-        print(f"Conversion failed: {e}")
+        print(f"Error: Conversion failed: {e}")
         raise
     finally:
         end_time = time.time()
         duration = end_time - start_time
-        print(f"Conversion completed in {duration:.2f} seconds.")
+        print(f"Info: Conversion completed in {duration:.2f} seconds.")
         if temp_file_path and Path(temp_file_path).exists():
             shutil.rmtree(Path(temp_file_path).parent, ignore_errors=True)
 
 
 def summarize(input_path, length="medium"):
     input_abs = Path(input_path).resolve()
-    print(f"🔍 Summarizing: {input_abs.name} ({length} length)")
+    print(f"Summarizing: {input_abs.name} ({length} length)")
     if not input_abs.exists() or not input_abs.is_file(): raise FileNotFoundError(f"Input file {input_abs} does not exist or is not a file.")
     if "GOOGLE_API_KEY" not in os.environ: raise EnvironmentError("GOOGLE_API_KEY environment variable is not set.")
     file_size_mb = input_abs.stat().st_size / (1024 * 1024)
     if file_size_mb > 100: raise ValueError(f"File size ({file_size_mb:.1f}MB) exceeds maximum limit of 100MB")
-    print(f"📄 File validated ({file_size_mb:.1f}MB) - uploading to AI service...")
+    print(f"Info: File validated ({file_size_mb:.1f}MB) - uploading to AI service...")
     genai = safe_import("google.genai", "google-generativeai")
     client, doc = genai.Client(), None
     try:
         doc = client.files.upload(file=input_abs)
-        print("⚙️  Processing document and generating summary...")
+        print("Info: Processing document and generating summary...")
         configs = {"short": {"description": "a brief summary in 2-3 sentences", "max_tokens": 1000, "temperature": 0.5}, "medium": {"description": "a concise summary in 1-2 paragraphs", "max_tokens": 2000, "temperature": 0.7}, "long": {"description": "a detailed summary in 3-4 paragraphs", "max_tokens": 4000, "temperature": 0.8}}
         config = configs.get(length, configs["medium"])
         with open("./summarize_prompt.txt", "r", encoding="utf-8") as f: prompt = f.read().replace("{{SUMMARY_REQUIREMENTS}}", config["description"]).replace("{{FILE_DETAILS}}", json.dumps(doc.to_json_dict(), indent=2))
         start_time = time.time()
         while True:
             file_info = client.files.get(name=doc.name)
-            if file_info.state == "ACTIVE": print("✅ Document processed successfully!"); break
+            if file_info.state == "ACTIVE": print("Success: Document processed successfully!"); break
             elif file_info.state == "FAILED": raise RuntimeError("File processing failed")
             elif file_info.state == "PROCESSING" and time.time() - start_time > 300: raise TimeoutError("File processing timed out")
             time.sleep(2)
         response = client.models.generate_content(model="gemini-2.0-flash", contents=[prompt, doc], config=genai.types.GenerateContentConfig(temperature=config["temperature"], top_p=0.9, max_output_tokens=config["max_tokens"]))
         summary_content = response._get_text()
         if not summary_content or len(summary_content.strip()) < 10: raise ValueError("Generated summary is empty or too short")
-        print(f"\n📝 Generated Summary ({len(summary_content)} characters):\n" + "=" * 60)
+        print(f"\nGenerated Summary ({len(summary_content)} characters):")
+        print("=" * 60)
         print(summary_content)
         print("=" * 60)
         summary_file = input_abs.with_name(input_abs.stem + "_summary.txt")
-        with open(summary_file, "w", encoding="utf-8") as sf: sf.write(summary_content)
-        print(f"💾 Summary saved to: {summary_file}")
+        with open(summary_file, "w", encoding="utf-8") as sf: 
+            sf.write(summary_content)
+        print(f"Info: Summary saved to: {summary_file}")
         return summary_content
     except Exception as e: raise RuntimeError(f"❌ Error: {type(e).__name__}: {e}") from e
     finally:
@@ -232,7 +200,7 @@ def summarize(input_path, length="medium"):
 
 
 def setup_parser():
-    parser = argparse.ArgumentParser(prog="swissknife", usage="swissknife [options]", description="A Swiss Army Knife of command-line tools. Use -h for help.", epilog=("Examples:\n  %(prog)s convert input.docx output.pdf\n  %(prog)s batch-convert ./docs ./output .docx .pdf\n  %(prog)s summarize document.pdf --length medium\n"), formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser = argparse.ArgumentParser(prog="swissknife", usage="swissknife [options]", description="A Swiss Army Knife of command-line tools. Use -h for help.", epilog=("Examples:\n  %(prog)s convert input.docx output.pdf\n  %(prog)s batch-convert ./docs ./output .docx .pdf\n  %(prog)s summarize document.pdf --length medium\n  %(prog)s merge file1.pdf file2.pdf\n  %(prog)s split input.pdf 1-3,5,7-9"), formatter_class=argparse.RawDescriptionHelpFormatter)
     subparsers = parser.add_subparsers(dest="command", description="Available commands")
     convert_parser = subparsers.add_parser("convert", help="Convert files between formats")
     convert_parser.add_argument("input", help="Input file path"); convert_parser.add_argument("output", help="Output file path"); convert_parser.add_argument("--preserve-original", action="store_true", help="Preserve original file"); convert_parser.add_argument("--password", help="Password for encrypted documents or password-protected archives")
@@ -240,6 +208,10 @@ def setup_parser():
     batch_parser.add_argument("input_dir", help="Input directory path"); batch_parser.add_argument("output_dir", help="Output directory path"); batch_parser.add_argument("input_ext", help="Input file extension (e.g., .txt or txt)"); batch_parser.add_argument("output_ext", help="Output file extension (e.g., .pdf or pdf)")
     summarize_parser = subparsers.add_parser("summarize", help="Summarize text documents")
     summarize_parser.add_argument("input", help="Input document path"); summarize_parser.add_argument("--length", choices=["short", "medium", "long"], default="medium", help="Summary length")
+    merge_parser = subparsers.add_parser("merge", help="Merge multiple pdf files into one")
+    merge_parser.add_argument("inputs", nargs="+", help="Input PDF files to merge. Space-separated. E.g., file1.pdf file2.pdf")
+    split_parser = subparsers.add_parser("split", help="Split a PDF file into multiple single-page PDFs")
+    split_parser.add_argument("input", help="Input PDF file to split"); split_parser.add_argument("page_ranges", type=str, metavar="PAGE_RANGES", help=("Specify pages to extract using 1-based inclusive ranges separated by commas. " "Examples: '1-3,5,7-9' extracts pages 1 to 3, page 5, and pages 7 to 9."))
     return parser
 
 
@@ -256,13 +228,45 @@ def main():
             batch_convert(args.input_dir, args.output_dir, args.input_ext, args.output_ext)
         elif args.command == "summarize":
             summarize(args.input, length=args.length)
+        elif args.command == "merge":
+            PdfWriter = safe_import("pypdf", "pypdf").PdfWriter
+            merger = PdfWriter()
+            for pdf_file in args.inputs:
+                merger.append(pdf_file)
+            input_names = "_".join([Path(f).stem for f in args.inputs])
+            output_file = f"merged_{input_names}.pdf"
+            merger.write(output_file)
+            merger.close()
+            print(f"Success: Merged PDF saved to {output_file}")
+        elif args.command == "split":
+            PdfReader = safe_import("pypdf", "pypdf").PdfReader
+            input_pdf = PdfReader(args.input)
+            page_ranges = []
+            for part in args.page_ranges.split(","):
+                if "-" in part:
+                    start, end = map(int, part.split("-"))
+                    page_ranges.append([i for i in range(start - 1, end)])  # because PdfReader is 0-indexed and end is not inclusive #1-3 translates to 0,1,2
+                else:
+                    page_ranges.append([int(part) - 1])
+            print(page_ranges)
+            for idx, pages in enumerate(page_ranges):
+                writer = PdfWriter()
+                for page_num in pages:
+                    if 0 <= page_num < len(input_pdf.pages):
+                        writer.add_page(input_pdf.pages[page_num])
+                    else:
+                        print(f"Warning: Page {page_num + 1} is out of range.")
+                output_file = f"{Path(args.input).stem}_part{idx + 1}.pdf"
+                with open(output_file, "wb") as out_f:
+                    writer.write(out_f)
+                print(f"Success: Created {output_file} with pages {pages}")
         else:
             parser.print_help()
     except KeyboardInterrupt:
-        print("\n✗ Operation cancelled by user")
+        print("\nError: Operation cancelled by user")
         sys.exit(1)
     except Exception as e:
-        print(f"✗ Error: {e}")
+        print(f"Error: {e}")
         sys.exit(1)
 
 

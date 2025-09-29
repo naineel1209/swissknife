@@ -40,6 +40,9 @@ git clone https://github.com/yourname/swissknife.git
 cd swissknife
 pip install uv --upgrade
 uv sync
+
+# Activate the virtual environment
+source .venv/bin/activate  # On Windows use `.venv\Scripts\activate` or `.\.venv\Scripts\Activate.ps1`
 ```
 And active the .venv created.
 
@@ -330,7 +333,8 @@ swissknife/
 ├── samples/                # Sample input files for testing
 │   ├── README.docx         # Sample Word document
 │   ├── tenor_1.gif         # Sample animated GIF
-│   ├── Kanye_West_Ft_Pusha_T_-_Runaway_Offblogmedia.com.mp3  # Sample audio
+│   ├── runaway.mp3         # Sample audio
+|   ├── ...other files as well
 │   └── 20584448-uhd_3840_2160_60fps.mp4  # Sample video
 └── outputs/                # Default output directory (created on first use)
 ```

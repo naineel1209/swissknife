@@ -5,7 +5,6 @@ description = "A Swiss Army Knife for file conversions, manipulations and, Summa
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "psutil>=5.9.0",
     "patool>=4.0.1",
     "pdflatex>=0.1.3",
     "pillow>=11.3.0",

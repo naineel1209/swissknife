@@ -180,7 +180,7 @@ def summarize(input_path, length="medium"):
             elif file_info.state == "FAILED": raise RuntimeError("File processing failed")
             elif file_info.state == "PROCESSING" and time.time() - start_time > 300: raise TimeoutError("File processing timed out")
             time.sleep(2)
-        response = client.models.generate_content(model="gemini-2.0-flash", contents=[prompt, doc], config=genai.types.GenerateContentConfig(temperature=config["temperature"], top_p=0.9, max_output_tokens=config["max_tokens"]))
+        response = client.models.generate_content(model="gemini-2.5-flash", contents=[prompt, doc], config=genai.types.GenerateContentConfig(temperature=config["temperature"], top_p=0.9, max_output_tokens=config["max_tokens"]))
         summary_content = response._get_text()
         if not summary_content or len(summary_content.strip()) < 10: raise ValueError("Generated summary is empty or too short")
         print(f"\nGenerated Summary ({len(summary_content)} characters):")
@@ -188,7 +188,7 @@ def summarize(input_path, length="medium"):
         print(summary_content)
         print("=" * 60)
         summary_file = input_abs.with_name(input_abs.stem + "_summary.txt")
-        with open(summary_file, "w", encoding="utf-8") as sf: 
+        with open(summary_file, "w", encoding="utf-8") as sf:
             sf.write(summary_content)
         print(f"Info: Summary saved to: {summary_file}")
         return summary_content
@@ -235,11 +235,11 @@ def main():
                 merger.append(pdf_file)
             input_names = "_".join([Path(f).stem for f in args.inputs])
             output_file = f"merged_{input_names}.pdf"
-            merger.write(output_file)
-            merger.close()
+            merger.write(output_file); merger.close();
             print(f"Success: Merged PDF saved to {output_file}")
         elif args.command == "split":
             PdfReader = safe_import("pypdf", "pypdf").PdfReader
+            PdfWriter = safe_import("pypdf", "pypdf").PdfWriter
             input_pdf = PdfReader(args.input)
             page_ranges = []
             for part in args.page_ranges.split(","):

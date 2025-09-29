@@ -38,6 +38,7 @@ Using UV (recommended):
 ```bash
 git clone https://github.com/yourname/swissknife.git
 cd swissknife
+pip install uv --upgrade
 uv sync
 ```
 

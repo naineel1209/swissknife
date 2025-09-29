@@ -88,14 +88,8 @@ export PATH="$HOME/.TinyTeX/bin/x86_64-linux:$PATH"
 #### MacOS
 ```bash
 # Full installation
-brew install --cask mactex
-
-# Minimal installation (faster)
 brew install --cask basictex
-
-# After BasicTeX, install additional packages:
-sudo tlmgr update --self
-sudo tlmgr install collection-fontsrecommended
+export PATH=/Library/TeX/texbin:$PATH
 ```
 
 ### Archive Unpacking Dependencies
